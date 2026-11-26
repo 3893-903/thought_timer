@@ -285,13 +285,27 @@ body.studying .note-btn { display: none; }
 .mode-btn.active, .hist-tab.active { background: var(--card); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
 .mode-btn:disabled { cursor: not-allowed; }
 
-/* 뽀모도로 시간 설정 */
-/* 집중 · 휴식 시간 선택 */
-.pomo-settings { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
-.time-row { display: flex; align-items: center; gap: 12px; }
-.pomo-settings[hidden], .time-row[hidden] { display: none; }
-.time-label { width: 32px; flex-shrink: 0; font-size: 14px; font-weight: 600; color: var(--muted); }
+/* 집중 · 휴식 시간 고르기 (A안: 탭 전환형) */
+.pomo-settings { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.pomo-settings[hidden] { display: none; }
+/* 위: [집중 25분 | 휴식 5분] 탭 */
+.pomo-tabs { align-self: flex-start; display: flex; gap: 2px; padding: 4px; border-radius: 999px; background: var(--bg); }
+.pomo-tab {
+  padding: 6px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.pomo-tab.active { background: var(--card); color: var(--text); font-weight: 700; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); }
+.pomo-tab:disabled { opacity: 0.45; cursor: not-allowed; }
+/* 아래: 시간 버튼들 + 오른쪽 +5 · +10분 */
+.time-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .time-choices { display: flex; flex-wrap: wrap; gap: 6px; }
+.time-adds { display: flex; gap: 6px; margin-left: auto; }
 .time-chip {
   padding: 6px 14px;
   border: 1px solid var(--border);
@@ -305,8 +319,8 @@ body.studying .note-btn { display: none; }
 .time-chip:hover { border-color: var(--primary); }
 .time-chip.active { background: var(--primary); border-color: var(--primary); color: var(--on-primary); font-weight: 600; }
 .time-chip:disabled { opacity: 0.4; cursor: not-allowed; }
-.time-value { cursor: default; }                /* 지금 정한 집중 시간 (누르는 버튼 아님) */
-.time-row.off { opacity: 0.4; }                 /* 집중이 '제한 없음'이면 휴식 시간은 흐리게 */
+.time-add { border-style: dashed; border-color: var(--muted); background: none; color: var(--muted); font-weight: 600; }
+.time-add:hover:not(:disabled) { color: var(--text); }
 
 .timer-card { display: flex; flex-direction: column; }
 .timer-display {

@@ -15,7 +15,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/jua@5/400.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/gowun-dodum@5/400.css">
   <!-- ?v=날짜 : 파일을 고칠 때마다 바꾸면, 브라우저가 예전 파일 대신 새 파일을 받아 옴 -->
-  <link rel="stylesheet" href="style.css?v=20261127-1">
+  <link rel="stylesheet" href="style.css?v=20261127-2">
 </head>
 <body>
   <!-- 맨 왼쪽 위 작은 버튼 : 누르면 사이드바를 숨기거나 다시 보여 줌 (공부 중에는 숨김) -->
@@ -87,15 +87,19 @@
       </div>
 
       <!-- 집중 · 휴식 시간 고르기 (공부 중에는 숨김)
-           집중 '제한 없음' = 계속 흐르는 타이머 / 시간을 고르면 집중 ↔ 휴식 반복 (뽀모도로) -->
+           위 탭으로 집중 / 휴식을 고르고 → 아래 시간 버튼이나 +5 · +10분으로 맞춤
+           집중 '제한 없음' = 계속 흐르는 타이머 / 시간을 정하면 집중 ↔ 휴식 반복 (뽀모도로) -->
       <div id="pomoSettings" class="pomo-settings">
-        <div class="time-row">
-          <span class="time-label">집중</span>
-          <div id="focusChoices" class="time-choices"></div>
+        <div class="pomo-tabs">
+          <button class="pomo-tab" type="button" data-tab="focus">집중 <span id="focusValue"></span></button>
+          <button class="pomo-tab" type="button" data-tab="break">휴식 <span id="breakValue"></span></button>
         </div>
-        <div id="breakRow" class="time-row">
-          <span class="time-label">휴식</span>
-          <div id="breakChoices" class="time-choices"></div>
+        <div class="time-row">
+          <div id="timeChoices" class="time-choices"></div>
+          <div class="time-adds">
+            <button class="time-chip time-add" type="button" data-add="5">+5분</button>
+            <button class="time-chip time-add" type="button" data-add="10">+10분</button>
+          </div>
         </div>
       </div>
 
@@ -285,8 +289,8 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-  <script src="firebase-config.js?v=20261127-1"></script>
-  <script src="sync.js?v=20261127-1"></script>
-  <script src="script.js?v=20261127-1"></script>
+  <script src="firebase-config.js?v=20261127-2"></script>
+  <script src="sync.js?v=20261127-2"></script>
+  <script src="script.js?v=20261127-2"></script>
 </body>
 </html>

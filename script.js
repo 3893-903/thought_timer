@@ -35,9 +35,9 @@ const KEYS = {
 
 // 뽀모도로 기본 시간(분) — 사용자가 화면에서 바꾸면 localStorage에 저장됨
 // 집중 / 휴식 시간 선택지(분) — 집중 0 = '제한 없음'(계속 흐르는 타이머), 그 외에는 뽀모도로처럼 집중 ↔ 휴식 반복
-const FOCUS_STEPS = [5, 10, 30];   // 집중: '제한 없음'(0)에서 +5 / +10 / +30분을 눌러 시간을 쌓음
-const FOCUS_MAX = 240;              // 집중 시간은 최대 4시간까지
-const BREAK_CHOICES = [5, 10, 15, 20];
+const FOCUS_CHOICES = [0, 15, 25, 60, 120];   // 집중 시간 버튼 (0 = 제한 없음)
+const BREAK_CHOICES = [5, 10, 15, 20];        // 휴식 시간 버튼
+const TIME_MAX = { focus: 240, break: 60 };   // +5 · +10분으로 늘릴 수 있는 최대 (집중 4시간, 휴식 1시간)
 const DEFAULT_POMODORO = { focus: 0, break: 5 };
 
 // 카테고리는 직접 고르지 않고, 메모 내용을 보고 자동으로 정함 (5. 카테고리 자동 분류)
@@ -101,13 +101,12 @@ let note = load(KEYS.note, '');                         // 📝 메모장 내용
 let historyView = 'week';                               // 기록 자세히 보기: 'week' | 'month'
 let historyCursor = new Date();                         // 기록 자세히 보기: 지금 보고 있는 주의 월요일 / 달의 1일
 let pomoSetting = { ...DEFAULT_POMODORO, ...load(KEYS.pomodoro, {}) }; // { focus: 분(0 = 제한 없음), break: 분 }
-// 예전 버전 값 맞추기: 일반 모드였으면 '제한 없음', 선택지에 없는 시간이면 가장 가까운 선택지로
+// 예전 버전 값 맞추기: 일반 모드였으면 '제한 없음', 시간은 정해진 범위 안으로
 {
   const oldTimer = load(KEYS.timer, {});
   if (oldTimer.mode === 'normal' && !oldTimer.active) pomoSetting.focus = 0;
-  const nearest = (list, v) => list.reduce((a, b) => (Math.abs(b - v) < Math.abs(a - v) ? b : a));
-  pomoSetting.focus = Math.min(FOCUS_MAX, Math.max(0, Math.round(Number(pomoSetting.focus) || 0)));
-  if (!BREAK_CHOICES.includes(pomoSetting.break)) pomoSetting.break = nearest(BREAK_CHOICES, pomoSetting.break);
+  pomoSetting.focus = Math.min(TIME_MAX.focus, Math.max(0, Math.round(Number(pomoSetting.focus) || 0)));
+  pomoSetting.break = Math.min(TIME_MAX.break, Math.max(1, Math.round(Number(pomoSetting.break) || 5)));
 }
 // 집중 시간 선택에 따라 정해지는 모드: 제한 없음 → 'normal', 시간을 고르면 → 'pomodoro'
 const modeFromSetting = () => (pomoSetting.focus ? 'pomodoro' : 'normal');
@@ -1549,36 +1548,46 @@ function moveHistory(step) {
   renderHistory();
 }
 
-// 집중 · 휴식 시간 선택 버튼 그리기 (휴식은 집중 시간을 골랐을 때만 보임)
+// 집중 · 휴식 시간 고르기 (A안: 탭 전환형)
+// 위 탭에서 집중 / 휴식을 고르면 → 아래 버튼들이 그 시간을 바꿈
+let pomoTab = 'focus';   // 지금 고르고 있는 탭: 'focus' | 'break'
+
+const minText = (min) => (min ? `${min}분` : '제한 없음');
+
 function renderPomoSettings() {
-  const chip = (text, data, active = false) => {
-    const btn = el('button', 'time-chip', text);
-    btn.type = 'button';
-    Object.assign(btn.dataset, data);
-    btn.classList.toggle('active', active);
-    btn.setAttribute('aria-pressed', active);
-    return btn;
-  };
-  // 집중: [제한 없음] [지금 정한 시간] [+5분] [+10분] [+30분] — '제한 없음'을 누르면 0으로 돌아감
   const focus = pomoSetting.focus;
-  const focusBox = $('focusChoices');
-  focusBox.replaceChildren(chip('제한 없음', { focus: 0 }, focus === 0));
-  if (focus > 0) focusBox.append(el('span', 'time-chip active time-value', `${focus}분`));
-  FOCUS_STEPS.forEach((step) => {
-    const btn = chip(`+${step}분`, { focusAdd: step });
-    btn.disabled = focus >= FOCUS_MAX;
-    focusBox.append(btn);
+  if (!focus) pomoTab = 'focus';   // 집중이 '제한 없음'이면 쉬는 시간이 없으므로 휴식 탭은 못 고름
+
+  // 탭: [집중 25분] [휴식 5분]
+  $('focusValue').textContent = minText(focus);
+  $('breakValue').textContent = minText(pomoSetting.break);
+  document.querySelectorAll('.pomo-tab').forEach((tab) => {
+    const on = tab.dataset.tab === pomoTab;
+    tab.classList.toggle('active', on);
+    tab.setAttribute('aria-pressed', on);
+    tab.disabled = tab.dataset.tab === 'break' && !focus;
   });
 
-  // 휴식: [5분] [10분] [15분] [20분] — 집중이 '제한 없음'이면 쉬는 시간이 없으므로 흐리게
-  $('breakChoices').replaceChildren(...BREAK_CHOICES.map((min) => chip(`${min}분`, { break: min }, min === pomoSetting.break)));
-  $('breakRow').classList.toggle('off', focus === 0);
+  // 시간 버튼: 집중 [제한 없음] [15분] [25분] [60분] [120분] / 휴식 [5분] [10분] [15분] [20분]
+  const now = pomoSetting[pomoTab];
+  const list = pomoTab === 'focus' ? FOCUS_CHOICES : BREAK_CHOICES;
+  $('timeChoices').replaceChildren(...list.map((min) => {
+    const btn = el('button', 'time-chip', minText(min));
+    btn.type = 'button';
+    btn.dataset.min = min;
+    btn.classList.toggle('active', min === now);
+    btn.setAttribute('aria-pressed', min === now);
+    return btn;
+  }));
+
+  // +5 · +10분: 최대 시간이 되면 흐리게
+  document.querySelectorAll('.time-add').forEach((btn) => { btn.disabled = now >= TIME_MAX[pomoTab]; });
 }
 
 // 시간 선택 저장 (공부 중이 아닐 때만)
 function setPomoSetting(phase, minutes) {
   if (timer.active) return;
-  pomoSetting[phase] = phase === 'focus' ? Math.min(FOCUS_MAX, Math.max(0, minutes)) : minutes;
+  pomoSetting[phase] = Math.min(TIME_MAX[phase], Math.max(0, minutes));
   save(KEYS.pomodoro, pomoSetting);
   timer.mode = modeFromSetting();
   timer.phase = 'focus';
@@ -1702,15 +1711,13 @@ $('startBtn').addEventListener('click', startTimer);
 $('stopBtn').addEventListener('click', stopTimer);
 
 // 집중 · 휴식 시간 선택
-$('focusChoices').addEventListener('click', (e) => {
-  const add = e.target.closest('[data-focus-add]');
-  if (add) setPomoSetting('focus', pomoSetting.focus + Number(add.dataset.focusAdd)); // +5 / +10 / +30분
-  const reset = e.target.closest('[data-focus]');
-  if (reset) setPomoSetting('focus', 0);                                             // 제한 없음
-});
-$('breakChoices').addEventListener('click', (e) => {
-  const btn = e.target.closest('[data-break]');
-  if (btn) setPomoSetting('break', Number(btn.dataset.break));
+$('pomoSettings').addEventListener('click', (e) => {
+  const tab = e.target.closest('.pomo-tab');
+  if (tab && !tab.disabled) { pomoTab = tab.dataset.tab; renderPomoSettings(); }
+  const choice = e.target.closest('[data-min]');
+  if (choice) setPomoSetting(pomoTab, Number(choice.dataset.min));                               // 시간 버튼
+  const add = e.target.closest('[data-add]');
+  if (add) setPomoSetting(pomoTab, pomoSetting[pomoTab] + Number(add.dataset.add));             // +5 · +10분
 });
 
 // 메모 저장
