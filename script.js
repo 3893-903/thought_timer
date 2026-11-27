@@ -100,6 +100,7 @@ save(KEYS.records, records);   // (아래 6번의 mergeTodayRecords()로 오늘 
 let note = load(KEYS.note, '');                         // 📝 메모장 내용 (글 하나)
 let historyView = 'week';                               // 기록 자세히 보기: 'week' | 'month'
 let historyCursor = new Date();                         // 기록 자세히 보기: 지금 보고 있는 주의 월요일 / 달의 1일
+let historyDay = null;                                  // 기록함 그래프에서 누른 날 ('2026-11-27') → 그날 기록을 아래에 보여 줌
 let pomoSetting = { ...DEFAULT_POMODORO, ...load(KEYS.pomodoro, {}) }; // { focus: 분(0 = 제한 없음), break: 분 }
 // 예전 버전 값 맞추기: 일반 모드였으면 '제한 없음', 시간은 정해진 범위 안으로
 {
@@ -1469,6 +1470,14 @@ function renderHistory() {
 
   $('historyEmpty').hidden = total > 0;
 
+  // 아래에 기록을 보여 줄 날: 누른 날이 이 기간에 없으면 → 오늘 / 공부한 마지막 날 / 기간의 마지막 날
+  if (!keys.includes(historyDay)) {
+    const studied = bars.filter((b) => b.ms > 0);
+    historyDay = keys.includes(todayKey) ? todayKey
+      : studied.length ? studied[studied.length - 1].key
+      : keys[keys.length - 1];
+  }
+
   // 이번 주(이번 달)보다 미래로는 못 넘어가게
   $('nextPeriod').disabled = historyCursor.getTime() >= currentPeriodStart(historyView).getTime();
 
@@ -1482,8 +1491,12 @@ function renderHistory() {
   chart.dataset.view = historyView;
   chart.replaceChildren();
   bars.forEach((b) => {
-    const col = el('div', 'bar-col');
+    const col = el('button', 'bar-col');            // 막대를 누르면 그날 기록을 아래에 보여 줌
+    col.type = 'button';
+    col.dataset.day = b.key;
     if (b.key === todayKey) col.classList.add('today');
+    col.classList.toggle('selected', b.key === historyDay);
+    col.setAttribute('aria-pressed', b.key === historyDay);
     col.title = `${b.title}: ${fmtDuration(b.ms)}`; // 마우스를 올리면 정확한 시간 표시
 
     const bar = el('div', 'bar');
@@ -1497,15 +1510,16 @@ function renderHistory() {
     chart.append(col);
   });
 
-  // 그 주 / 그 달의 기록 목록 (최근 것부터, '수정'으로 이름 고치기)
-  $('historyListTitle').textContent = isWeek ? '이 주의 기록' : '이 달의 기록';
+  // 누른 날의 기록 목록 (최근 것부터, '수정'으로 이름 고치기 · '삭제')
+  const [y, m, d] = historyDay.split('-').map(Number);
+  $('historyListTitle').textContent = `${m}월 ${d}일 (${DAY_KO[new Date(y, m - 1, d).getDay()]})`;
   const list = $('historyList');
   list.replaceChildren();
-  const periodRecords = records
-    .filter((r) => keys.includes(r.date))
+  const dayRecords = records
+    .filter((r) => r.date === historyDay)
     .sort((a, b) => b.endedAt - a.endedAt);
-  if (periodRecords.length === 0) list.append(el('li', 'empty', '기록이 없어요.'));
-  periodRecords.forEach((r) => list.append(recordItem(r, { withDate: true })));
+  if (dayRecords.length === 0) list.append(el('li', 'empty', '기록이 없어요.'));
+  dayRecords.forEach((r) => list.append(recordItem(r)));
 
   renderShare();
 }
@@ -1536,6 +1550,7 @@ function closeDrawer(restoreFocus = true) {
 // 왼쪽 창: 공부 기록 자세히 보기
 function openHistory() {
   historyCursor = currentPeriodStart(historyView); // 열 때마다 이번 주(이번 달)부터
+  historyDay = null;                               // 아래 목록은 오늘부터
   renderHistory();
   openDrawer('historyDrawer', $('openHistory'));
 }
@@ -1861,6 +1876,14 @@ $('resumeList').addEventListener('click', (e) => {
 // 이름 칸에서 Enter = 시작
 $('goalInput').addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); startTimer(); }
+});
+
+// 기록함 그래프: 막대(날)를 누르면 그날 기록 보기
+$('historyChart').addEventListener('click', (e) => {
+  const col = e.target.closest('[data-day]');
+  if (!col) return;
+  historyDay = col.dataset.day;
+  renderHistory();
 });
 
 // 공부 기록 창: 이전 / 다음 기간, 주간 / 월간 전환
