@@ -281,6 +281,12 @@ function deleteMemo(id) {
 }
 
 // 카테고리 바꾸기 (자동 분류가 틀렸을 때 드롭다운에서 고름)
+// 공부 기록 삭제 (되돌릴 수 없음)
+function deleteRecord(id) {
+  records = records.filter((r) => r.id !== id);
+  save(KEYS.records, records);
+}
+
 function setCategory(id, category) {
   const m = memos.find((x) => x.id === id);
   if (!m) return;
@@ -1353,7 +1359,10 @@ function recordItem(r, { withDate = false } = {}) {
   edit.type = 'button';
   edit.dataset.editId = r.id;
   edit.title = '이름 수정';
-  actions.append(edit);
+  const del = el('button', 'record-edit rec-del', '삭제');   // 한 번 누르면 빨갛게 → 한 번 더 누르면 지워짐
+  del.type = 'button';
+  del.dataset.delId = r.id;
+  actions.append(edit, del);
 
   li.append(info, actions);
   return li;
@@ -1817,10 +1826,30 @@ $('reviewList').addEventListener('change', (e) => {
 });
 
 
-// 기록함 창: '수정' → 목표 고치기
+// 기록함 창: '수정' → 목표 고치기 / '삭제' → 한 번 더 누르면 기록 지우기
 $('historyList').addEventListener('click', (e) => {
+  const del = e.target.closest('[data-del-id]');
+  if (del) {
+    if (!del.classList.contains('confirm')) {
+      resetDeleteButtons();
+      del.classList.add('confirm');
+      return;
+    }
+    deleteRecord(del.dataset.delId);
+    renderAll();
+    renderHistory();
+    return;
+  }
   const edit = e.target.closest('[data-edit-id]');
   if (edit) startEditGoal(edit);
+});
+
+// 빨갛게 바뀐 '삭제'는 다른 곳을 누르면 원래대로
+function resetDeleteButtons() {
+  document.querySelectorAll('.rec-del.confirm').forEach((b) => b.classList.remove('confirm'));
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.rec-del')) resetDeleteButtons();
 });
 
 // 타이머 아래 '이어하기' 버튼 → 그 공부를 이어서 시작

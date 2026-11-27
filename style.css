@@ -518,6 +518,9 @@ body.no-scroll { overflow: hidden; }
   cursor: pointer;
 }
 .record-edit:hover { color: var(--text); }
+.rec-del:hover { color: var(--danger-text); }
+/* '삭제'를 한 번 누르면 빨갛게 → 한 번 더 누르면 지워짐 */
+.rec-del.confirm, .rec-del.confirm:hover { border-radius: 6px; color: #fff; background: #D9534F; font-weight: 700; text-decoration: none; }
 
 /* 휴대폰처럼 좁은 화면: 창을 거의 꽉 차게, 막대 위 시간은 숨김 (총 시간은 위 요약 칸에서 확인) */
 @media (max-width: 760px) {
