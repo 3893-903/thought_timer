@@ -87,7 +87,7 @@ function defaultTimer() {
 }
 
 let timer = { ...defaultTimer(), ...load(KEYS.timer, {}) };
-if (timer.running && !timer.segStart) timer.segStart = timer.phaseStart || Date.now(); // 예전 버전에서 공부하던 중이었으면
+if (timer.running && timer.phase !== 'break' && !timer.segStart) timer.segStart = timer.phaseStart || Date.now(); // 예전 버전에서 공부하던 중이었으면
 let memos = load(KEYS.memos, []);                       // [{ id, text, category, createdAt }]
 // 예전 버전의 '공부 질문(공부 관련)' 카테고리는 없어졌으므로 '궁금한 것'으로 옮김
 if (memos.some((m) => m.category === '공부 질문')) {
@@ -155,7 +155,7 @@ function startTimer() {
   }
   timer.running = true;              // 시작 또는 계속하기
   timer.phaseStart = Date.now();
-  timer.segStart = Date.now();       // 타임테이블용: 이 구간 시작
+  timer.segStart = timer.phase === 'focus' ? Date.now() : null;   // 타임테이블용: 이 구간 시작 (휴식 중이면 X)
 
   saveTimer();
   renderAll();
@@ -235,11 +235,22 @@ function advancePomodoro() {
 
   let elapsed = phaseElapsed();
   let changed = false;
+  let phaseBegan = Date.now() - elapsed;   // 지금 구간이 시작된 시각
 
   while (elapsed >= phaseLength(timer.phase)) {
     const len = phaseLength(timer.phase);
-    if (timer.phase === 'focus') timer.studiedMs += len;
+    const boundary = phaseBegan + len;     // 집중 ↔ 휴식이 바뀐 시각
+    if (timer.phase === 'focus') {
+      timer.studiedMs += len;
+      // 타임테이블: 집중 구간은 여기서 끝 (휴식 시간은 공부 시간에 넣지 않음)
+      if (!Array.isArray(timer.segments)) timer.segments = [];
+      if (timer.segStart && boundary > timer.segStart) timer.segments.push([timer.segStart, boundary]);
+      timer.segStart = null;
+    } else {
+      timer.segStart = boundary;           // 휴식이 끝나면 새 집중 구간 시작
+    }
     timer.phase = timer.phase === 'focus' ? 'break' : 'focus';
+    phaseBegan = boundary;
     elapsed -= len;
     changed = true;
   }
